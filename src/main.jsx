@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Building2,
-  CalendarDays,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -100,24 +99,25 @@ function App() {
   return <main>
     <header>
       <div className="brand">
-        <div className="brandmark"><CalendarDays size={24} /></div>
-        <div><b>Ritmo Marketing</b><span>KPI mensual de contenido</span></div>
+        <img className="brand-logo" src="/zu-black.png" alt="Zona Urbana" />
+        <div><b>ZONA URBANA</b><span>Panel de marketing</span></div>
       </div>
       <button className="primary" onClick={() => openNew()}><Plus size={18} /> Programar contenido</button>
     </header>
 
     <section className="hero">
-      <div>
-        <p className="eyebrow">CALENDARIO DE CONTENIDO</p>
-        <h1>Publica a tiempo.<br /><em>Mide el impacto.</em></h1>
-        <p>Programa reels, historias, propiedades y pautas.<br />Evalúa cada entrega con 100, 50 o 0 puntos.</p>
+      <img className="hero-watermark" src="/zu-black.png" alt="" aria-hidden="true" />
+      <div className="hero-copy">
+        <p className="eyebrow">CONTROL DE CONTENIDO</p>
+        <h1>tu contenido,<br /><em>tu resultado.</em></h1>
+        <p>Planifica reels, historias, propiedades y pautas.<br />Convierte cada publicación en un KPI accionable.</p>
       </div>
       <div className="score">
         <div className="ring" style={{ '--p': `${kpis.score * 3.6}deg` }}>
           <strong>{kpis.score}</strong><span>de 100</span>
         </div>
         <div>
-          <b>KPI ponderado</b>
+          <b>KPI ponderado mensual</b>
           <span><i className="dot done" />{counts.done} a tiempo · 100 pts</span>
           <span><i className="dot late" />{counts.late} con atraso · 50 pts</span>
           <span><i className="dot missed" />{counts.missed} no realizadas · 0 pts</span>
@@ -170,7 +170,7 @@ function App() {
       </div>
     </section>
 
-    <footer><span>Doble clic en un día para programar contenido.</span><span>Pesos: Reels 50% · Historias 20% · Propiedades 20% · Pautas 10%</span></footer>
+    <footer><span>Doble clic en un día para programar contenido.</span><span>ZONA URBANA · tu ciudad, tu futuro.</span><span>Reels 50% · Historias 20% · Propiedades 20% · Pautas 10%</span></footer>
 
     {modal && <div className="overlay" onMouseDown={(event) => event.target === event.currentTarget && setModal(false)}>
       <form className="modal" onSubmit={submit}>
