@@ -5,4 +5,4 @@ compatibility_date = "2026-08-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "ritmo-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "0cb12a6c-e620-4fd6-980f-5d0ce2ce1903"

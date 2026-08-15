@@ -15,4 +15,6 @@ pnpm dev
 - API REST en Cloudflare Workers.
 - Base de datos Cloudflare D1, definida en `cloudflare/schema.sql`.
 
-Para Cloudflare: crea `ritmo-db`, coloca su ID en `cloudflare/wrangler.toml`, ejecuta `pnpm db:remote` y luego `pnpm deploy` dentro de `cloudflare/`. En Vercel configura `VITE_API_BASE_URL` con la URL del Worker y despliega el proyecto raíz.
+La API de producción está desplegada en `https://ritmo-api.ritmo-api.workers.dev`. En Vercel configura `VITE_API_BASE_URL` con esa URL y despliega el proyecto raíz.
+
+Para recrear la infraestructura de Cloudflare, crea `ritmo-db`, coloca su ID en `cloudflare/wrangler.toml`, ejecuta `pnpm db:remote` y luego `pnpm deploy` dentro de `cloudflare/`.
