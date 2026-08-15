@@ -1,6 +1,8 @@
 # Ritmo — calendario mensual
 
-Calendario web para programar actividades y calificarlas como **logradas**, **logradas con atraso** o **no ejecutadas**. Incluye balance mensual, diseño adaptable y persistencia offline; en producción sincroniza con Cloudflare D1 mediante un Worker.
+Calendario mensual de marketing para programar **reels**, **historias**, **publicaciones de propiedades** y **pautas**. Cada contenido se evalúa con 100 puntos si salió a tiempo, 50 si se publicó con atraso y 0 si no se realizó.
+
+El KPI mensual usa la ponderación acordada: reels 50%, historias 20%, publicaciones de propiedades 20% y pautas 10%. Incluye desglose por categoría, diseño adaptable y sincronización con Cloudflare D1 mediante un Worker.
 
 ## Desarrollo
 

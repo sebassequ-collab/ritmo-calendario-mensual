@@ -1,58 +1,217 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ChevronLeft, ChevronRight, Plus, X, CalendarDays, Trash2, CheckCircle2, Clock3, CircleX } from 'lucide-react';
+import {
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CircleDotDashed,
+  CircleX,
+  Clock3,
+  Film,
+  Megaphone,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { api } from './api.js';
 import { calendarDays, isoDate, monthKey, monthLabel } from './date.js';
+import { calculateMarketingKpis, CONTENT_TYPES } from './kpi.js';
 import './styles.css';
 
+const TYPE_ICONS = { reel: Film, story: CircleDotDashed, property: Building2, ad: Megaphone };
 const STATUS = {
-  pending: { label: 'Pendiente', short: 'Pendiente', icon: Clock3 },
-  done: { label: 'Logrado', short: 'A tiempo', icon: CheckCircle2 },
-  late: { label: 'Con atraso', short: 'Con atraso', icon: Clock3 },
-  missed: { label: 'No ejecutado', short: 'No hecho', icon: CircleX },
+  pending: { label: 'Pendiente', short: 'Pendiente', points: null, icon: Clock3 },
+  done: { label: 'Publicado a tiempo', short: '100 · A tiempo', points: 100, icon: CheckCircle2 },
+  late: { label: 'Publicado con atraso', short: '50 · Con atraso', points: 50, icon: Clock3 },
+  missed: { label: 'No realizado', short: '0 · No realizado', points: 0, icon: CircleX },
 };
-const SAMPLE = [
-  { id:'demo-1', title:'Revisión semanal', date:isoDate(new Date()), time:'09:00', status:'done', notes:'Revisar prioridades del mes' },
-  { id:'demo-2', title:'Enviar propuesta', date:isoDate(new Date()), time:'14:30', status:'pending', notes:'' },
-];
 
-function App(){
-  const [view,setView]=useState(new Date()); const [tasks,setTasks]=useState([]); const [selected,setSelected]=useState(null);
-  const [modal,setModal]=useState(false); const [editing,setEditing]=useState(null); const [notice,setNotice]=useState('');
-  const days=useMemo(()=>calendarDays(view),[view]);
-  useEffect(()=>{ load(); },[view]);
-  async function load(){
-    try { setTasks(await api.list(monthKey(view))); setNotice(''); }
-    catch { const stored=JSON.parse(localStorage.getItem('ritmo.tasks')||'null'); setTasks(stored||SAMPLE); if(!api.enabled)setNotice('Modo local · conecta Cloudflare para sincronizar'); }
+function App() {
+  const [view, setView] = useState(new Date());
+  const [tasks, setTasks] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [notice, setNotice] = useState('');
+  const days = useMemo(() => calendarDays(view), [view]);
+
+  useEffect(() => { load(); }, [view]);
+
+  async function load() {
+    try {
+      setTasks(await api.list(monthKey(view)));
+      setNotice('');
+    } catch {
+      const stored = JSON.parse(localStorage.getItem('ritmo.tasks') || '[]');
+      setTasks(stored);
+      setNotice('Modo local · los cambios se guardan en este dispositivo');
+    }
   }
-  function saveLocal(next){ setTasks(next); localStorage.setItem('ritmo.tasks',JSON.stringify(next)); }
-  async function submit(e){
-    e.preventDefault(); const fd=new FormData(e.currentTarget); const data=Object.fromEntries(fd); let next;
-    if(editing){ const item={...editing,...data}; next=tasks.map(t=>t.id===editing.id?item:t); try{await api.update(editing.id,item)}catch{} }
-    else { const item={...data,id:crypto.randomUUID(),status:'pending'}; next=[...tasks,item]; try{await api.create(item)}catch{} }
-    saveLocal(next); setModal(false); setEditing(null);
+
+  function saveLocal(next) {
+    setTasks(next);
+    localStorage.setItem('ritmo.tasks', JSON.stringify(next));
   }
-  async function setStatus(task,status){ const item={...task,status}; saveLocal(tasks.map(t=>t.id===task.id?item:t)); try{await api.update(task.id,item)}catch{} }
-  async function remove(task){ saveLocal(tasks.filter(t=>t.id!==task.id)); setModal(false); try{await api.remove(task.id)}catch{} }
-  const monthTasks=tasks.filter(t=>t.date?.startsWith(monthKey(view))); const scored=monthTasks.filter(t=>t.status!=='pending');
-  const counts=Object.fromEntries(['done','late','missed'].map(s=>[s,monthTasks.filter(t=>t.status===s).length]));
-  const completion=scored.length?Math.round((counts.done+counts.late*.5)/scored.length*100):0;
-  function openNew(date){setSelected(date||isoDate(new Date()));setEditing(null);setModal(true)}
+
+  async function submit(event) {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.currentTarget));
+    let next;
+    if (editing) {
+      const item = { ...editing, ...data };
+      next = tasks.map((task) => task.id === editing.id ? item : task);
+      try { await api.update(editing.id, item); } catch { setNotice('Cambio guardado localmente; no se pudo sincronizar'); }
+    } else {
+      const item = { ...data, id: crypto.randomUUID(), status: 'pending' };
+      next = [...tasks, item];
+      try { await api.create(item); } catch { setNotice('Tarea guardada localmente; no se pudo sincronizar'); }
+    }
+    saveLocal(next);
+    setModal(false);
+    setEditing(null);
+  }
+
+  async function setStatus(task, status) {
+    const item = { ...task, status };
+    saveLocal(tasks.map((current) => current.id === task.id ? item : current));
+    try { await api.update(task.id, item); } catch { setNotice('Evaluación guardada localmente; no se pudo sincronizar'); }
+  }
+
+  async function remove(task) {
+    saveLocal(tasks.filter((current) => current.id !== task.id));
+    setModal(false);
+    try { await api.remove(task.id); } catch { setNotice('Se eliminó localmente; no se pudo sincronizar'); }
+  }
+
+  const monthTasks = tasks.filter((task) => task.date?.startsWith(monthKey(view)));
+  const kpis = calculateMarketingKpis(monthTasks);
+  const counts = Object.fromEntries(
+    ['done', 'late', 'missed'].map((status) => [status, monthTasks.filter((task) => task.status === status).length]),
+  );
+
+  function openNew(date) {
+    setSelected(date || isoDate(new Date()));
+    setEditing(null);
+    setModal(true);
+  }
+
   return <main>
-    <header><div className="brand"><div className="brandmark"><CalendarDays size={24}/></div><div><b>Ritmo</b><span>Tu mes, con intención.</span></div></div><button className="primary" onClick={()=>openNew()}><Plus size={18}/> Nueva actividad</button></header>
-    <section className="hero"><div><p className="eyebrow">PLANIFICADOR MENSUAL</p><h1>Haz espacio para<br/><em>lo que importa.</em></h1><p>Organiza tus compromisos, registra tu progreso<br/>y aprende del ritmo real de tus días.</p></div>
-      <div className="score"><div className="ring" style={{'--p':`${completion*3.6}deg`}}><strong>{completion}%</strong><span>cumplimiento</span></div><div><b>Balance del mes</b><span><i className="dot done"/>{counts.done} logradas</span><span><i className="dot late"/>{counts.late} con atraso</span><span><i className="dot missed"/>{counts.missed} no ejecutadas</span></div></div>
+    <header>
+      <div className="brand">
+        <div className="brandmark"><CalendarDays size={24} /></div>
+        <div><b>Ritmo Marketing</b><span>KPI mensual de contenido</span></div>
+      </div>
+      <button className="primary" onClick={() => openNew()}><Plus size={18} /> Programar contenido</button>
+    </header>
+
+    <section className="hero">
+      <div>
+        <p className="eyebrow">CALENDARIO DE CONTENIDO</p>
+        <h1>Publica a tiempo.<br /><em>Mide el impacto.</em></h1>
+        <p>Programa reels, historias, propiedades y pautas.<br />Evalúa cada entrega con 100, 50 o 0 puntos.</p>
+      </div>
+      <div className="score">
+        <div className="ring" style={{ '--p': `${kpis.score * 3.6}deg` }}>
+          <strong>{kpis.score}</strong><span>de 100</span>
+        </div>
+        <div>
+          <b>KPI ponderado</b>
+          <span><i className="dot done" />{counts.done} a tiempo · 100 pts</span>
+          <span><i className="dot late" />{counts.late} con atraso · 50 pts</span>
+          <span><i className="dot missed" />{counts.missed} no realizadas · 0 pts</span>
+        </div>
+      </div>
     </section>
-    <section className="calendar-card"><div className="toolbar"><div><h2>{monthLabel(view)}</h2>{notice&&<span className="notice">{notice}</span>}</div><div className="nav"><button onClick={()=>setView(new Date(view.getFullYear(),view.getMonth()-1,1))}><ChevronLeft/></button><button onClick={()=>setView(new Date())}>Hoy</button><button onClick={()=>setView(new Date(view.getFullYear(),view.getMonth()+1,1))}><ChevronRight/></button></div></div>
-      <div className="weekdays">{['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=><b key={x}>{x}</b>)}</div>
-      <div className="grid">{days.map(day=>{const key=isoDate(day), dayTasks=tasks.filter(t=>t.date===key), outside=day.getMonth()!==view.getMonth(),today=key===isoDate(new Date());return <div className={`day ${outside?'outside':''}`} key={key} onDoubleClick={()=>openNew(key)}><button className={`date ${today?'today':''}`} onClick={()=>openNew(key)}>{day.getDate()}</button><div className="events">{dayTasks.map(t=><button key={t.id} className={`event ${t.status}`} onClick={()=>{setEditing(t);setSelected(t.date);setModal(true)}}><span>{t.time}</span>{t.title}</button>)}</div></div>})}</div>
+
+    <section className="kpi-strip" aria-label="Desglose del KPI mensual">
+      {kpis.categories.map((type) => {
+        const Icon = TYPE_ICONS[type.id];
+        return <article className={`kpi-card ${type.id}`} key={type.id}>
+          <div className="kpi-icon"><Icon size={19} /></div>
+          <div className="kpi-copy"><b>{type.label}</b><span>{type.scheduled} programadas · {type.evaluated} evaluadas</span></div>
+          <div className="kpi-value"><strong>{type.score}</strong><span>{type.weight}% del KPI</span></div>
+        </article>;
+      })}
     </section>
-    <footer><span>Doble clic en un día para crear una actividad.</span><span>Ritmo · Progreso sin presión</span></footer>
-    {modal&&<div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&setModal(false)}><form className="modal" onSubmit={submit}><div className="modal-head"><div><p className="eyebrow">{editing?'EDITAR ACTIVIDAD':'NUEVA ACTIVIDAD'}</p><h2>{editing?'Ajusta el plan':'Reserva este momento'}</h2></div><button type="button" className="icon" onClick={()=>setModal(false)}><X/></button></div>
-      <label>Actividad<input name="title" required autoFocus defaultValue={editing?.title} placeholder="¿Qué quieres lograr?"/></label><div className="fields"><label>Fecha<input type="date" name="date" required defaultValue={editing?.date||selected}/></label><label>Hora<input type="time" name="time" defaultValue={editing?.time||'09:00'}/></label></div><label>Notas<textarea name="notes" defaultValue={editing?.notes} placeholder="Contexto, pasos o recordatorios…"/></label>
-      {editing&&<fieldset><legend>¿Cómo salió?</legend><div className="statuses">{Object.entries(STATUS).map(([key,val])=>{const Icon=val.icon;return <button type="button" key={key} className={editing.status===key?'active':''} onClick={()=>{setStatus(editing,key);setEditing({...editing,status:key})}}><Icon size={17}/>{val.short}</button>})}</div></fieldset>}
-      <div className="actions">{editing&&<button type="button" className="danger" onClick={()=>remove(editing)}><Trash2 size={17}/>Eliminar</button>}<span/><button type="button" className="ghost" onClick={()=>setModal(false)}>Cancelar</button><button className="primary" type="submit">Guardar</button></div>
-    </form></div>}
-  </main>
+
+    <section className="calendar-card">
+      <div className="toolbar">
+        <div><h2>{monthLabel(view)}</h2>{notice && <span className="notice">{notice}</span>}</div>
+        <div className="nav">
+          <button aria-label="Mes anterior" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))}><ChevronLeft /></button>
+          <button onClick={() => setView(new Date())}>Hoy</button>
+          <button aria-label="Mes siguiente" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))}><ChevronRight /></button>
+        </div>
+      </div>
+      <div className="weekdays">{['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => <b key={day}>{day}</b>)}</div>
+      <div className="grid">
+        {days.map((day) => {
+          const key = isoDate(day);
+          const dayTasks = tasks.filter((task) => task.date === key);
+          const outside = day.getMonth() !== view.getMonth();
+          const today = key === isoDate(new Date());
+          return <div className={`day ${outside ? 'outside' : ''}`} key={key} onDoubleClick={() => openNew(key)}>
+            <button className={`date ${today ? 'today' : ''}`} onClick={() => openNew(key)}>{day.getDate()}</button>
+            <div className="events">
+              {dayTasks.map((task) => {
+                const type = CONTENT_TYPES.find((item) => item.id === (task.task_type || 'reel')) || CONTENT_TYPES[0];
+                const points = STATUS[task.status]?.points;
+                return <button key={task.id} className={`event ${task.status} type-${type.id}`} onClick={() => { setEditing(task); setSelected(task.date); setModal(true); }}>
+                  <span className="event-meta"><b>{type.short}</b>{task.time}</span>
+                  <span className="event-title">{task.title}</span>
+                  {points !== null && points !== undefined && <strong className="event-points">{points}</strong>}
+                </button>;
+              })}
+            </div>
+          </div>;
+        })}
+      </div>
+    </section>
+
+    <footer><span>Doble clic en un día para programar contenido.</span><span>Pesos: Reels 50% · Historias 20% · Propiedades 20% · Pautas 10%</span></footer>
+
+    {modal && <div className="overlay" onMouseDown={(event) => event.target === event.currentTarget && setModal(false)}>
+      <form className="modal" onSubmit={submit}>
+        <div className="modal-head">
+          <div><p className="eyebrow">{editing ? 'EDITAR CONTENIDO' : 'NUEVO CONTENIDO'}</p><h2>{editing ? 'Ajusta la publicación' : 'Programa la entrega'}</h2></div>
+          <button type="button" className="icon" aria-label="Cerrar" onClick={() => setModal(false)}><X /></button>
+        </div>
+        <label>Tipo de contenido
+          <select name="task_type" required defaultValue={editing?.task_type || 'reel'}>
+            {CONTENT_TYPES.map((type) => <option value={type.id} key={type.id}>{type.singular} · peso {type.weight}%</option>)}
+          </select>
+        </label>
+        <label>Contenido o campaña
+          <input name="title" required autoFocus defaultValue={editing?.title} placeholder="Ej. Reel: recorrido Casa Roble" />
+        </label>
+        <div className="fields">
+          <label>Fecha de publicación<input type="date" name="date" required defaultValue={editing?.date || selected} /></label>
+          <label>Hora<input type="time" name="time" defaultValue={editing?.time || '09:00'} /></label>
+        </div>
+        <label>Notas<textarea name="notes" defaultValue={editing?.notes} placeholder="Copy, enlace, responsable o recordatorios…" /></label>
+        {editing && <fieldset>
+          <legend>Evaluación de la publicación</legend>
+          <div className="statuses">
+            {Object.entries(STATUS).map(([key, value]) => {
+              const Icon = value.icon;
+              return <button type="button" key={key} className={editing.status === key ? 'active' : ''} onClick={() => { setStatus(editing, key); setEditing({ ...editing, status: key }); }}>
+                <Icon size={17} />{value.short}
+              </button>;
+            })}
+          </div>
+          <p className="score-help">100 = publicado a tiempo · 50 = publicado después de la fecha · 0 = no realizado</p>
+        </fieldset>}
+        <div className="actions">
+          {editing && <button type="button" className="danger" onClick={() => remove(editing)}><Trash2 size={17} />Eliminar</button>}
+          <span />
+          <button type="button" className="ghost" onClick={() => setModal(false)}>Cancelar</button>
+          <button className="primary" type="submit">Guardar</button>
+        </div>
+      </form>
+    </div>}
+  </main>;
 }
-createRoot(document.getElementById('root')).render(<App/>);
+
+createRoot(document.getElementById('root')).render(<App />);
