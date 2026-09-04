@@ -15,7 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { api } from './api.js';
-import { calendarDays, isoDate, monthKey, monthLabel } from './date.js';
+import { calendarDays, isoDate, monthKey, monthLabel, taskOccursInMonth, taskOccursOnDate } from './date.js';
 import { calculateMarketingKpis, CONTENT_TYPES } from './kpi.js';
 import './styles.css';
 
@@ -33,6 +33,8 @@ function App() {
   const [selected, setSelected] = useState(null);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [draftType, setDraftType] = useState('reel');
+  const [draftDate, setDraftDate] = useState('');
   const [notice, setNotice] = useState('');
   const days = useMemo(() => calendarDays(view), [view]);
 
@@ -56,7 +58,15 @@ function App() {
 
   async function submit(event) {
     event.preventDefault();
-    const data = Object.fromEntries(new FormData(event.currentTarget));
+    const formData = Object.fromEntries(new FormData(event.currentTarget));
+    const data = {
+      ...formData,
+      end_date: formData.task_type === 'ad' ? (formData.end_date || formData.date) : '',
+    };
+    if (data.end_date && data.end_date < data.date) {
+      setNotice('La fecha de finalización no puede ser anterior al inicio');
+      return;
+    }
     let next;
     if (editing) {
       const item = { ...editing, ...data };
@@ -84,15 +94,26 @@ function App() {
     try { await api.remove(task.id); } catch { setNotice('Se eliminó localmente; no se pudo sincronizar'); }
   }
 
-  const monthTasks = tasks.filter((task) => task.date?.startsWith(monthKey(view)));
+  const monthTasks = tasks.filter((task) => taskOccursInMonth(task, monthKey(view)));
   const kpis = calculateMarketingKpis(monthTasks);
   const counts = Object.fromEntries(
     ['done', 'late', 'missed'].map((status) => [status, monthTasks.filter((task) => task.status === status).length]),
   );
 
   function openNew(date) {
-    setSelected(date || isoDate(new Date()));
+    const initialDate = date || isoDate(new Date());
+    setSelected(initialDate);
     setEditing(null);
+    setDraftType('reel');
+    setDraftDate(initialDate);
+    setModal(true);
+  }
+
+  function openEdit(task) {
+    setSelected(task.date);
+    setEditing(task);
+    setDraftType(task.task_type || 'reel');
+    setDraftDate(task.date);
     setModal(true);
   }
 
@@ -149,7 +170,7 @@ function App() {
       <div className="grid">
         {days.map((day) => {
           const key = isoDate(day);
-          const dayTasks = tasks.filter((task) => task.date === key);
+          const dayTasks = tasks.filter((task) => taskOccursOnDate(task, key));
           const outside = day.getMonth() !== view.getMonth();
           const today = key === isoDate(new Date());
           return <div className={`day ${outside ? 'outside' : ''}`} key={key} onDoubleClick={() => openNew(key)}>
@@ -158,8 +179,9 @@ function App() {
               {dayTasks.map((task) => {
                 const type = CONTENT_TYPES.find((item) => item.id === (task.task_type || 'reel')) || CONTENT_TYPES[0];
                 const points = STATUS[task.status]?.points;
-                return <button key={task.id} className={`event ${task.status} type-${type.id}`} onClick={() => { setEditing(task); setSelected(task.date); setModal(true); }}>
-                  <span className="event-meta"><b>{type.short}</b>{task.time}</span>
+                const isMultiDayAd = type.id === 'ad' && task.end_date && task.end_date !== task.date;
+                return <button key={task.id} className={`event ${task.status} type-${type.id}`} onClick={() => openEdit(task)}>
+                  <span className="event-meta"><b>{type.short}</b>{isMultiDayAd ? `${task.date} → ${task.end_date}` : task.time}</span>
                   <span className="event-title">{task.title}</span>
                   {points !== null && points !== undefined && <strong className="event-points">{points}</strong>}
                 </button>;
@@ -179,7 +201,7 @@ function App() {
           <button type="button" className="icon" aria-label="Cerrar" onClick={() => setModal(false)}><X /></button>
         </div>
         <label>Tipo de contenido
-          <select name="task_type" required defaultValue={editing?.task_type || 'reel'}>
+          <select name="task_type" required value={draftType} onChange={(event) => setDraftType(event.target.value)}>
             {CONTENT_TYPES.map((type) => <option value={type.id} key={type.id}>{type.singular} · peso {type.weight}%</option>)}
           </select>
         </label>
@@ -187,9 +209,12 @@ function App() {
           <input name="title" required autoFocus defaultValue={editing?.title} placeholder="Ej. Reel: recorrido Casa Roble" />
         </label>
         <div className="fields">
-          <label>Fecha de publicación<input type="date" name="date" required defaultValue={editing?.date || selected} /></label>
+          <label>{draftType === 'ad' ? 'Fecha de inicio' : 'Fecha de publicación'}<input type="date" name="date" required defaultValue={editing?.date || selected} onChange={(event) => setDraftDate(event.target.value)} /></label>
           <label>Hora<input type="time" name="time" defaultValue={editing?.time || '09:00'} /></label>
         </div>
+        {draftType === 'ad' && <label>Fecha de finalización
+          <input type="date" name="end_date" required min={draftDate} defaultValue={editing?.end_date || editing?.date || selected} />
+        </label>}
         <label>Notas<textarea name="notes" defaultValue={editing?.notes} placeholder="Copy, enlace, responsable o recordatorios…" /></label>
         {editing && <fieldset>
           <legend>Evaluación de la publicación</legend>

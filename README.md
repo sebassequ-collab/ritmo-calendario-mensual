@@ -2,6 +2,8 @@
 
 Calendario mensual de marketing para programar **reels**, **historias**, **publicaciones de propiedades** y **pautas**. Cada contenido se evalúa con 100 puntos si salió a tiempo, 50 si se publicó con atraso y 0 si no se realizó.
 
+Las pautas admiten una fecha de inicio y una fecha de finalización. Se muestran en cada día de su vigencia, incluso cuando cruzan de un mes a otro, pero cuentan como una sola campaña dentro del KPI.
+
 El KPI mensual usa la ponderación acordada: reels 50%, historias 20%, publicaciones de propiedades 20% y pautas 10%. Incluye desglose por categoría, diseño adaptable y sincronización con Cloudflare D1 mediante un Worker.
 
 Los rubros sin tareas programadas en el mes quedan fuera del promedio. Los pesos de los rubros activos se normalizan proporcionalmente para sumar 100%; un rubro programado pero todavía pendiente sí participa con una calificación temporal de 0 hasta que sea evaluado.
