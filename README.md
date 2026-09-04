@@ -4,6 +4,8 @@ Calendario mensual de marketing para programar **reels**, **historias**, **publi
 
 El KPI mensual usa la ponderación acordada: reels 50%, historias 20%, publicaciones de propiedades 20% y pautas 10%. Incluye desglose por categoría, diseño adaptable y sincronización con Cloudflare D1 mediante un Worker.
 
+Los rubros sin tareas programadas en el mes quedan fuera del promedio. Los pesos de los rubros activos se normalizan proporcionalmente para sumar 100%; un rubro programado pero todavía pendiente sí participa con una calificación temporal de 0 hasta que sea evaluado.
+
 La interfaz sigue la identidad visual de Zona Urbana 2025: logotipo oficial, paleta negro/blanco cálido/café/gris y combinación tipográfica editorial de estilo Gibson + Ivy Presto.
 
 ## Desarrollo

@@ -56,6 +56,8 @@ header { height: 104px; border-bottom: 1px solid #0c0b0b24; display: flex; align
 .kpi-card.story { background: var(--gray); }
 .kpi-card.property { background: var(--paper); }
 .kpi-card.ad { color: var(--cream); background: var(--brown); border-color: var(--brown); }
+.kpi-card.inactive { color: #74716d; border-color: #0c0b0b55; border-style: dashed; background: transparent; }
+.kpi-card.inactive .kpi-icon { opacity: .65; }
 .kpi-copy { min-width: 0; }
 .kpi-copy b, .kpi-copy span, .kpi-value strong, .kpi-value span { display: block; }
 .kpi-copy b { font-size: 13px; }

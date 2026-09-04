@@ -8,25 +8,38 @@ export const CONTENT_TYPES = [
 export const STATUS_POINTS = { done: 100, late: 50, missed: 0 };
 
 export function calculateMarketingKpis(tasks) {
-  const categories = CONTENT_TYPES.map((type) => {
+  const categoryRows = CONTENT_TYPES.map((type) => {
     const scheduled = tasks.filter((task) => (task.task_type || 'reel') === type.id);
     const evaluated = scheduled.filter((task) => task.status in STATUS_POINTS);
-    const score = evaluated.length
-      ? Math.round(evaluated.reduce((sum, task) => sum + STATUS_POINTS[task.status], 0) / evaluated.length)
-      : 0;
+    const active = scheduled.length > 0;
+    const score = active
+      ? (evaluated.length
+        ? Math.round(evaluated.reduce((sum, task) => sum + STATUS_POINTS[task.status], 0) / evaluated.length)
+        : 0)
+      : null;
 
     return {
       ...type,
+      active,
       scheduled: scheduled.length,
       evaluated: evaluated.length,
       pending: scheduled.filter((task) => task.status === 'pending').length,
       score,
-      contribution: score * (type.weight / 100),
     };
   });
 
+  const activeWeight = categoryRows.reduce((sum, type) => sum + (type.active ? type.weight : 0), 0);
+  const categories = categoryRows.map((type) => ({
+    ...type,
+    effectiveWeight: type.active && activeWeight ? Math.round((type.weight / activeWeight) * 100) : 0,
+    contribution: type.active ? type.score * type.weight : 0,
+  }));
+
   return {
-    score: Math.round(categories.reduce((sum, type) => sum + type.contribution, 0)),
+    score: activeWeight
+      ? Math.round(categories.reduce((sum, type) => sum + type.contribution, 0) / activeWeight)
+      : 0,
+    activeWeight,
     categories,
     evaluated: categories.reduce((sum, type) => sum + type.evaluated, 0),
     pending: categories.reduce((sum, type) => sum + type.pending, 0),

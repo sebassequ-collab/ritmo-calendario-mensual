@@ -128,10 +128,10 @@ function App() {
     <section className="kpi-strip" aria-label="Desglose del KPI mensual">
       {kpis.categories.map((type) => {
         const Icon = TYPE_ICONS[type.id];
-        return <article className={`kpi-card ${type.id}`} key={type.id}>
+        return <article className={`kpi-card ${type.id} ${type.active ? '' : 'inactive'}`} key={type.id}>
           <div className="kpi-icon"><Icon size={19} /></div>
-          <div className="kpi-copy"><b>{type.label}</b><span>{type.scheduled} programadas · {type.evaluated} evaluadas</span></div>
-          <div className="kpi-value"><strong>{type.score}</strong><span>{type.weight}% del KPI</span></div>
+          <div className="kpi-copy"><b>{type.label}</b><span>{type.active ? `${type.scheduled} programadas · ${type.evaluated} evaluadas` : 'Sin programación este mes'}</span></div>
+          <div className="kpi-value"><strong>{type.active ? type.score : '—'}</strong><span>{type.active ? `${type.effectiveWeight}% del cálculo` : 'Fuera del cálculo'}</span></div>
         </article>;
       })}
     </section>
